@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&family=Playfair+Display:wght@400;700&display=swap');
+
+@layer base {
+  body {
+    @apply bg-rose-50 text-stone-800 font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-serif;
+  }
+}
+
+@layer components {
+  .btn-rose {
+    @apply bg-rose-500 text-white px-6 py-3 rounded-full font-medium
+           hover:bg-rose-600 active:scale-95 transition-all duration-200 shadow-md;
+  }
+  .btn-ghost {
+    @apply border border-rose-300 text-rose-500 px-6 py-3 rounded-full font-medium
+           hover:bg-rose-50 active:scale-95 transition-all duration-200;
+  }
+  .card {
+    @apply bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300;
+  }
+  .input-field {
+    @apply w-full border border-rose-200 rounded-xl px-4 py-3 focus:outline-none
+           focus:ring-2 focus:ring-rose-300 bg-white/80 transition;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-rose-200 rounded-full; }
+
+/* Smooth page transitions */
+.page-enter-active, .page-leave-active { transition: all 0.3s ease; }
+.page-enter-from { opacity: 0; transform: translateY(10px); }
+.page-leave-to { opacity: 0; transform: translateY(-10px); }

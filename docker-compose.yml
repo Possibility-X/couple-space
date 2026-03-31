@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: couple-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      ANNIVERSARY_DATE: ${ANNIVERSARY_DATE}
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-100}
+    volumes:
+      - ./data/uploads:/app/data/uploads
+      - ./data/db:/app/data/db
+    networks:
+      - couple-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: couple-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./data/uploads:/data/uploads:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+    networks:
+      - couple-net
+
+networks:
+  couple-net:
+    driver: bridge
