@@ -6,6 +6,21 @@ const config = require('../config')
 
 const router = express.Router()
 
+// 登录失败记录 { username: { count, lockedUntil } }
+const loginAttempts = new Map()
+const MAX_ATTEMPTS = 5
+const LOCK_TIME = 15 * 60 * 1000 // 15分钟
+
+// 每小时清理过期记录
+setInterval(() => {
+  const now = Date.now()
+  for (const [username, attempt] of loginAttempts.entries()) {
+    if (attempt.lockedUntil > 0 && attempt.lockedUntil < now) {
+      loginAttempts.delete(username)
+    }
+  }
+}, 60 * 60 * 1000)
+
 // GET /api/auth/setup-status - 检查是否已完成初始化（公开接口）
 router.get('/setup-status', (req, res) => {
   const db = getDb()
@@ -19,11 +34,32 @@ router.post('/login', (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ error: '用户名和密码不能为空' })
   }
+
+  // 检查账号是否被锁定
+  const attempt = loginAttempts.get(username)
+  if (attempt && attempt.lockedUntil > Date.now()) {
+    const remainingMinutes = Math.ceil((attempt.lockedUntil - Date.now()) / 60000)
+    return res.status(429).json({ error: `账号已锁定，请在 ${remainingMinutes} 分钟后重试` })
+  }
+
   const db = getDb()
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username)
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    // 记录失败次数
+    const current = loginAttempts.get(username) || { count: 0, lockedUntil: 0 }
+    current.count++
+    if (current.count >= MAX_ATTEMPTS) {
+      current.lockedUntil = Date.now() + LOCK_TIME
+      loginAttempts.set(username, current)
+      return res.status(429).json({ error: `登录失败次数过多，账号已锁定 15 分钟` })
+    }
+    loginAttempts.set(username, current)
     return res.status(401).json({ error: '用户名或密码错误' })
   }
+
+  // 登录成功，清除失败记录
+  loginAttempts.delete(username)
+
   const token = jwt.sign(
     { id: user.id, username: user.username, displayName: user.display_name },
     config.jwtSecret,
