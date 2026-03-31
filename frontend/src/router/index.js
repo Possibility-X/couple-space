@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import axios from 'axios'
 
 const routes = [
   { path: '/login', component: () => import('@/views/Login.vue'), meta: { guest: true } },
@@ -22,8 +23,21 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
   const auth = useAuthStore()
+
+  // 检查 /setup 是否已完成
+  if (to.path === '/setup') {
+    try {
+      const res = await axios.get('/api/auth/setup-status')
+      if (res.data.setupDone) {
+        return '/login'
+      }
+    } catch (e) {
+      console.error('Failed to check setup status:', e)
+    }
+  }
+
   if (to.meta.requiresAuth && !auth.isLoggedIn) return '/login'
   if (to.meta.guest && auth.isLoggedIn && to.path !== '/setup') return '/'
 })

@@ -6,6 +6,13 @@ const config = require('../config')
 
 const router = express.Router()
 
+// GET /api/auth/setup-status - 检查是否已完成初始化（公开接口）
+router.get('/setup-status', (req, res) => {
+  const db = getDb()
+  const cfg = db.prepare('SELECT setup_done FROM couple_config WHERE id = 1').get()
+  res.json({ setupDone: cfg?.setup_done || 0 })
+})
+
 // POST /api/auth/login
 router.post('/login', (req, res) => {
   const { username, password } = req.body
