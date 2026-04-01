@@ -67,10 +67,15 @@ async function fetchMedia(reset = false) {
   if (reset) { page.value = 1; media.value = [] }
   const params = { page: page.value, limit: 20 }
   if (selectedAlbum.value) params.album = selectedAlbum.value
-  const res = await axios.get('/api/media', { params })
-  media.value.push(...res.data.items)
-  hasMore.value = media.value.length < res.data.total
-  loading.value = false
+  try {
+    const res = await axios.get('/api/media', { params })
+    media.value.push(...res.data.items)
+    hasMore.value = media.value.length < res.data.total
+  } catch (e) {
+    console.error('Failed to fetch media:', e)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function loadMore() {
@@ -81,8 +86,12 @@ async function loadMore() {
 watch(selectedAlbum, () => fetchMedia(true))
 
 onMounted(async () => {
-  const res = await axios.get('/api/albums')
-  albums.value = res.data
+  try {
+    const res = await axios.get('/api/albums')
+    albums.value = res.data
+  } catch (e) {
+    console.error('Failed to fetch albums:', e)
+  }
   await fetchMedia(true)
 })
 </script>

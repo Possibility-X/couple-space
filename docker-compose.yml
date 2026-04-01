@@ -11,9 +11,16 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ANNIVERSARY_DATE: ${ANNIVERSARY_DATE}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-100}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
     volumes:
       - ./data/uploads:/app/data/uploads
       - ./data/db:/app/data/db
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/auth/setup-status', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - couple-net
 

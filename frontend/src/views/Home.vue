@@ -2,7 +2,11 @@
   <div class="relative min-h-screen">
     <HeartParticles />
 
-    <div class="relative z-10 px-4 py-6 space-y-6">
+    <div v-if="loading" class="relative z-10 flex items-center justify-center min-h-screen">
+      <div class="text-rose-300 text-sm animate-pulse">加载中…</div>
+    </div>
+
+    <div v-else class="relative z-10 px-4 py-6 space-y-6">
       <!-- Couple names -->
       <div class="text-center">
         <p class="font-serif text-stone-500 text-lg">
@@ -60,6 +64,7 @@ import { useConfigStore } from '@/stores/config'
 const configStore = useConfigStore()
 const config = configStore.config ? ref(configStore.config) : ref(null)
 const recentMedia = ref([])
+const loading = ref(false)
 const lightboxItem = ref(null)
 const lightboxIndex = ref(0)
 
@@ -69,11 +74,18 @@ function openLightbox(item) {
 }
 
 onMounted(async () => {
-  if (!config.value) {
-    await configStore.fetchConfig()
-    config.value = configStore.config
+  loading.value = true
+  try {
+    if (!config.value) {
+      await configStore.fetchConfig()
+      config.value = configStore.config
+    }
+    const res = await axios.get('/api/media/recent')
+    recentMedia.value = res.data
+  } catch (e) {
+    console.error('Failed to load home data:', e)
+  } finally {
+    loading.value = false
   }
-  const res = await axios.get('/api/media/recent')
-  recentMedia.value = res.data
 })
 </script>

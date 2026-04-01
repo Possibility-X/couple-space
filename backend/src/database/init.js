@@ -72,6 +72,11 @@ function initSchema() {
     );
 
     INSERT OR IGNORE INTO couple_config (id) VALUES (1);
+
+    CREATE INDEX IF NOT EXISTS idx_media_album_id ON media(album_id);
+    CREATE INDEX IF NOT EXISTS idx_media_uploaded_by ON media(uploaded_by);
+    CREATE INDEX IF NOT EXISTS idx_media_taken_at ON media(taken_at);
+    CREATE INDEX IF NOT EXISTS idx_timeline_event_date ON timeline_events(event_date);
   `)
 }
 

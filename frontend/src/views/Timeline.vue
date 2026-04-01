@@ -96,26 +96,40 @@ function editEvent(event) {
 }
 
 async function saveEvent() {
-  if (editingEvent.value) {
-    await axios.put(`/api/timeline/${editingEvent.value.id}`, form.value)
-  } else {
-    await axios.post('/api/timeline', form.value)
+  try {
+    if (editingEvent.value) {
+      await axios.put(`/api/timeline/${editingEvent.value.id}`, form.value)
+    } else {
+      await axios.post('/api/timeline', form.value)
+    }
+    showForm.value = false
+    editingEvent.value = null
+    form.value = { title: '', event_date: '', emoji: '❤️', description: '', is_milestone: false }
+    await fetchEvents()
+  } catch (e) {
+    console.error('Failed to save event:', e)
+    alert('保存失败，请重试')
   }
-  showForm.value = false
-  editingEvent.value = null
-  form.value = { title: '', event_date: '', emoji: '❤️', description: '', is_milestone: false }
-  await fetchEvents()
 }
 
 async function deleteEvent(id) {
   if (!confirm('确定删除这条记忆吗？')) return
-  await axios.delete(`/api/timeline/${id}`)
-  await fetchEvents()
+  try {
+    await axios.delete(`/api/timeline/${id}`)
+    await fetchEvents()
+  } catch (e) {
+    console.error('Failed to delete event:', e)
+    alert('删除失败，请重试')
+  }
 }
 
 async function fetchEvents() {
-  const res = await axios.get('/api/timeline')
-  events.value = res.data
+  try {
+    const res = await axios.get('/api/timeline')
+    events.value = res.data
+  } catch (e) {
+    console.error('Failed to fetch events:', e)
+  }
 }
 
 onMounted(fetchEvents)

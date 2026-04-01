@@ -29,6 +29,8 @@ router.post('/', auth, (req, res) => {
 router.put('/:id', auth, (req, res) => {
   const { name, description, cover_media_id } = req.body
   const db = getDb()
+  const album = db.prepare('SELECT id FROM albums WHERE id = ?').get(req.params.id)
+  if (!album) return res.status(404).json({ error: '相册不存在' })
   db.prepare('UPDATE albums SET name = COALESCE(?, name), description = COALESCE(?, description), cover_media_id = COALESCE(?, cover_media_id) WHERE id = ?')
     .run(name, description, cover_media_id, req.params.id)
   res.json({ ok: true })
@@ -36,6 +38,8 @@ router.put('/:id', auth, (req, res) => {
 
 router.delete('/:id', auth, (req, res) => {
   const db = getDb()
+  const album = db.prepare('SELECT id FROM albums WHERE id = ?').get(req.params.id)
+  if (!album) return res.status(404).json({ error: '相册不存在' })
   db.prepare('UPDATE media SET album_id = NULL WHERE album_id = ?').run(req.params.id)
   db.prepare('DELETE FROM albums WHERE id = ?').run(req.params.id)
   res.json({ ok: true })

@@ -29,6 +29,8 @@ router.post('/', auth, (req, res) => {
 router.put('/:id', auth, (req, res) => {
   const { title, description, event_date, media_id, is_milestone, emoji } = req.body
   const db = getDb()
+  const event = db.prepare('SELECT id FROM timeline_events WHERE id = ?').get(req.params.id)
+  if (!event) return res.status(404).json({ error: '事件不存在' })
   db.prepare(`
     UPDATE timeline_events SET
       title = COALESCE(?, title),
@@ -44,6 +46,8 @@ router.put('/:id', auth, (req, res) => {
 
 router.delete('/:id', auth, (req, res) => {
   const db = getDb()
+  const event = db.prepare('SELECT id FROM timeline_events WHERE id = ?').get(req.params.id)
+  if (!event) return res.status(404).json({ error: '事件不存在' })
   db.prepare('DELETE FROM timeline_events WHERE id = ?').run(req.params.id)
   res.json({ ok: true })
 })

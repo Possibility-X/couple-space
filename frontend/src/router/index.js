@@ -35,6 +35,7 @@ router.beforeEach(async (to, from) => {
       }
     } catch (e) {
       console.error('Failed to check setup status:', e)
+      return '/login'
     }
   }
 

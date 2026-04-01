@@ -7,7 +7,9 @@ const { getDb } = require('./database/init')
 const app = express()
 
 app.use(cors({
-  origin: config.nodeEnv === 'development' ? 'http://localhost:5173' : false,
+  origin: config.nodeEnv === 'development'
+    ? 'http://localhost:5173'
+    : (process.env.CORS_ORIGIN || false),
   credentials: true
 }))
 app.use(express.json())
@@ -33,7 +35,8 @@ app.use((err, req, res, next) => {
     return res.status(413).json({ error: `文件超过 ${config.maxFileSizeMB}MB 限制` })
   }
   console.error(err)
-  res.status(500).json({ error: err.message || '服务器错误' })
+  const message = config.nodeEnv === 'production' ? '服务器内部错误' : (err.message || '服务器错误')
+  res.status(500).json({ error: message })
 })
 
 app.listen(config.port, () => {

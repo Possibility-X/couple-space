@@ -13,9 +13,11 @@ const upload = createUploadMiddleware()
 // GET /api/media
 router.get('/', auth, (req, res) => {
   const db = getDb()
-  const { album, page = 1, limit = 20, type } = req.query
-  const offset = (parseInt(page) - 1) * parseInt(limit)
+  const page = Math.max(1, parseInt(req.query.page) || 1)
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20))
+  const offset = (page - 1) * limit
 
+  const { album, type } = req.query
   let where = '1=1'
   const params = []
   if (album) { where += ' AND m.album_id = ?'; params.push(album) }
@@ -30,12 +32,12 @@ router.get('/', auth, (req, res) => {
     WHERE ${where}
     ORDER BY m.taken_at DESC, m.created_at DESC
     LIMIT ? OFFSET ?
-  `).all(...params, parseInt(limit), offset)
+  `).all(...params, limit, offset)
 
   const total = db.prepare(`SELECT COUNT(*) as cnt FROM media m WHERE ${where}`)
     .get(...params).cnt
 
-  res.json({ items, total, page: parseInt(page), limit: parseInt(limit) })
+  res.json({ items, total, page, limit })
 })
 
 // POST /api/media/upload
@@ -90,15 +92,18 @@ router.post('/upload', auth, upload.array('files', 20), async (req, res) => {
 })
 
 // DELETE /api/media/:id
-router.delete('/:id', auth, (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   const db = getDb()
   const item = db.prepare('SELECT * FROM media WHERE id = ?').get(req.params.id)
   if (!item) return res.status(404).json({ error: '文件不存在' })
+  if (item.uploaded_by !== req.user.id) return res.status(403).json({ error: '无权删除此文件' })
 
   const origPath = path.join(config.uploadsDir, 'originals', item.filename)
   const thumbPath = item.thumb_filename ? path.join(config.uploadsDir, 'thumbs', item.thumb_filename) : null
-  try { fs.unlinkSync(origPath) } catch {}
-  try { if (thumbPath) fs.unlinkSync(thumbPath) } catch {}
+  try { await fs.promises.unlink(origPath) } catch (e) { console.error('Failed to delete original:', e.message) }
+  if (thumbPath) {
+    try { await fs.promises.unlink(thumbPath) } catch (e) { console.error('Failed to delete thumb:', e.message) }
+  }
 
   db.prepare('DELETE FROM media WHERE id = ?').run(req.params.id)
   res.json({ ok: true })

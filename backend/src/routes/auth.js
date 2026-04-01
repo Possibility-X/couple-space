@@ -108,7 +108,9 @@ router.post('/setup', (req, res) => {
     res.json({ ok: true })
   } catch (e) {
     db.exec('ROLLBACK')
-    res.status(400).json({ error: '初始化失败：' + e.message })
+    console.error('Setup error:', e)
+    const message = config.nodeEnv === 'production' ? '初始化失败，请检查账号信息后重试' : '初始化失败：' + e.message
+    res.status(400).json({ error: message })
   }
 })
 
