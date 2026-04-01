@@ -13,7 +13,7 @@
 
 ### 前置要求
 
-- Node.js 20+
+- Node.js 22+（后端使用 Node.js 内置 `node:sqlite`，需要 22.5+）
 - Git
 - Docker Desktop (可选，用于本地测试)
 
@@ -41,6 +41,12 @@ ANNIVERSARY_DATE=YYYY-MM-DD
 PORT=3000
 NODE_ENV=development
 MAX_FILE_SIZE_MB=100
+
+# 阿里云短信服务（生产环境必填，开发环境自动打印到控制台）
+ALIYUN_ACCESS_KEY_ID=your_access_key_id
+ALIYUN_ACCESS_KEY_SECRET=your_access_key_secret
+ALIYUN_SMS_SIGN_NAME=你的短信签名
+ALIYUN_SMS_TEMPLATE_CODE=SMS_XXXXXXXXX
 ```
 
 ## 生产部署
@@ -110,6 +116,9 @@ nano .env
 - `ANNIVERSARY_DATE`: 你们的纪念日 (YYYY-MM-DD)
 - `DOMAIN`: 你的域名
 - `NODE_ENV`: production
+- `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`: 阿里云 RAM 子账号 AccessKey（需授权 `AliyunDysmsFullAccess`）
+- `ALIYUN_SMS_SIGN_NAME`: 已审核通过的短信签名
+- `ALIYUN_SMS_TEMPLATE_CODE`: 已审核通过的短信模板（模板变量为 `${code}`）
 
 #### 6. 启动服务
 
@@ -136,9 +145,9 @@ docker-compose exec nginx sh -c "apk add certbot certbot-nginx && \
 
 首次部署后，访问 `https://你的域名/setup` 创建双方账号并设置纪念日。
 
+- 账号须使用**中国大陆手机号**（11位，`1[3-9]XXXXXXXXX` 格式）
 - Setup 页面仅在初始化前可访问（`setup_done = 0`）
 - 完成初始化后，访问 `/setup` 会自动跳转到登录页面
-- 这确保了账号信息的隐私性和安全性
 
 ## 维护指南
 
@@ -341,9 +350,11 @@ couple-space/
 5. **监控**: 定期检查日志，发现异常及时处理
 6. **防火墙**: 只开放必要端口 (22, 80, 443)
 7. **初始化保护**: Setup 页面完成初始化后自动禁用，防止账号信息泄露
-8. **登录保护**: 连续 5 次登录失败后账号锁定 15 分钟，防止暴力破解
-9. **资源保护**: 媒体文件删除仅限上传者本人操作（403 拦截越权请求）
-10. **安全响应头**: Nginx 已配置 X-Frame-Options、X-XSS-Protection、Referrer-Policy 等安全头
+8. **双因素登录**: 手机号+密码验证通过后还需输入短信验证码（OTP），有效期 5 分钟，60 秒内限发一次
+9. **暴力破解防护**: 连续 5 次密码错误后账号锁定 15 分钟
+10. **资源保护**: 媒体文件删除仅限上传者本人操作（403 拦截越权请求）
+11. **安全响应头**: Nginx 已配置 X-Frame-Options、X-XSS-Protection、Referrer-Policy 等安全头
+12. **阿里云 AccessKey**: 建议使用 RAM 子账号并仅授权 `AliyunDysmsFullAccess`，不使用主账号 AccessKey
 
 ## 许可证
 

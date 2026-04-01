@@ -14,4 +14,8 @@ module.exports = {
   nodeEnv,
   uploadsDir: require('path').join(__dirname, '../data/uploads'),
   dbPath: require('path').join(__dirname, '../data/db/couple.db'),
+  aliyunAccessKeyId: process.env.ALIYUN_ACCESS_KEY_ID || '',
+  aliyunAccessKeySecret: process.env.ALIYUN_ACCESS_KEY_SECRET || '',
+  aliyunSmsSignName: process.env.ALIYUN_SMS_SIGN_NAME || '',
+  aliyunSmsTemplateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE || '',
 }

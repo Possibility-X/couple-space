@@ -38,5 +38,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, token, isLoggedIn, setAuth, logout, fetchMe }
+  async function verifyOtp(phone, code) {
+    const res = await axios.post('/api/auth/verify-otp', { phone, code })
+    setAuth(res.data)
+  }
+
+  return { user, token, isLoggedIn, setAuth, logout, fetchMe, verifyOtp }
 })

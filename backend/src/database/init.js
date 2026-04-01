@@ -73,10 +73,20 @@ function initSchema() {
 
     INSERT OR IGNORE INTO couple_config (id) VALUES (1);
 
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_media_album_id ON media(album_id);
     CREATE INDEX IF NOT EXISTS idx_media_uploaded_by ON media(uploaded_by);
     CREATE INDEX IF NOT EXISTS idx_media_taken_at ON media(taken_at);
     CREATE INDEX IF NOT EXISTS idx_timeline_event_date ON timeline_events(event_date);
+    CREATE INDEX IF NOT EXISTS idx_otp_phone ON otp_codes(phone);
   `)
 }
 

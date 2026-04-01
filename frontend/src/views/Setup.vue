@@ -12,7 +12,7 @@
           <!-- Person 1 -->
           <div class="space-y-3 mb-4">
             <h3 class="font-serif text-rose-500 font-semibold">TA 的账号</h3>
-            <input v-model="form.person1.username" placeholder="账号" class="input-field" required />
+            <input v-model="form.person1.username" type="tel" placeholder="手机号（11位）" class="input-field" maxlength="11" required />
             <input v-model="form.person1.displayName" placeholder="昵称（如：小宝）" class="input-field" required />
             <input v-model="form.person1.password" type="password" placeholder="密码" class="input-field" required />
           </div>
@@ -20,7 +20,7 @@
           <!-- Person 2 -->
           <div class="space-y-3 mb-4">
             <h3 class="font-serif text-rose-500 font-semibold">你的账号</h3>
-            <input v-model="form.person2.username" placeholder="账号" class="input-field" required />
+            <input v-model="form.person2.username" type="tel" placeholder="手机号（11位）" class="input-field" maxlength="11" required />
             <input v-model="form.person2.displayName" placeholder="昵称（如：宝宝）" class="input-field" required />
             <input v-model="form.person2.password" type="password" placeholder="密码" class="input-field" required />
           </div>
@@ -56,6 +56,15 @@ const form = ref({
 })
 
 async function handleSetup() {
+  const phoneRe = /^1[3-9]\d{9}$/
+  if (!phoneRe.test(form.value.person1.username)) {
+    error.value = 'TA 的手机号格式不正确'
+    return
+  }
+  if (!phoneRe.test(form.value.person2.username)) {
+    error.value = '你的手机号格式不正确'
+    return
+  }
   loading.value = true
   error.value = ''
   try {
