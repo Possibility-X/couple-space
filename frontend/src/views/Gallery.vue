@@ -36,9 +36,11 @@
 
     <Lightbox v-if="lightboxItem" :item="lightboxItem"
       :current-index="lightboxIndex" :total="media.length"
+      :can-delete="lightboxItem?.uploaded_by === auth.user?.id"
       @close="lightboxItem = null"
       @prev="lightboxIndex > 0 && (lightboxIndex--, lightboxItem = media[lightboxIndex])"
-      @next="lightboxIndex < media.length-1 && (lightboxIndex++, lightboxItem = media[lightboxIndex])" />
+      @next="lightboxIndex < media.length-1 && (lightboxIndex++, lightboxItem = media[lightboxIndex])"
+      @delete="handleDelete" />
   </div>
 </template>
 
@@ -47,6 +49,9 @@ import { ref, watch, onMounted } from 'vue'
 import axios from 'axios'
 import PhotoCard from '@/components/PhotoCard.vue'
 import Lightbox from '@/components/Lightbox.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 
 const albums = ref([])
 const media = ref([])
@@ -81,6 +86,17 @@ async function fetchMedia(reset = false) {
 async function loadMore() {
   page.value++
   await fetchMedia()
+}
+
+async function handleDelete() {
+  const item = lightboxItem.value
+  try {
+    await axios.delete(`/api/media/${item.id}`)
+    media.value.splice(media.value.indexOf(item), 1)
+    lightboxItem.value = null
+  } catch (e) {
+    console.error('Delete failed:', e)
+  }
 }
 
 watch(selectedAlbum, () => fetchMedia(true))
