@@ -46,8 +46,8 @@
         <form @submit.prevent="handleVerify" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-stone-600 mb-1">短信验证码</label>
-            <input v-model="form.code" type="text" inputmode="numeric" placeholder="请输入 6 位验证码"
-              class="input-field text-center text-2xl tracking-widest" maxlength="6" autocomplete="one-time-code" required />
+            <input v-model="form.code" type="text" inputmode="numeric" placeholder="请输入 4 位验证码"
+              class="input-field text-center text-2xl tracking-widest" maxlength="4" autocomplete="one-time-code" required />
           </div>
           <div v-if="error" class="text-rose-500 text-sm text-center">{{ error }}</div>
           <button type="submit" class="btn-rose w-full" :disabled="loading">
