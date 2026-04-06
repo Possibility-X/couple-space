@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { getDb } = require('../database/init')
 const config = require('../config')
-const { sendOtp } = require('../services/sms')
+const { sendSmsCode, verifySmsCode } = require('../services/sms')
 const { validateFields, LIMITS } = require('../utils/validate')
 const multer = require('multer')
 const path = require('path')
@@ -14,7 +14,6 @@ const router = express.Router()
 
 const PHONE_REGEX = /^1[3-9]\d{9}$/
 function isValidPhone(p) { return PHONE_REGEX.test(p) }
-function generateOtp() { return String(Math.floor(100000 + Math.random() * 900000)) }
 
 // 登录失败记录 { phone: { count, lockedUntil } }
 const loginAttempts = new Map()
@@ -48,7 +47,6 @@ setInterval(() => {
       otpFailures.delete(phone)
     }
   }
-  getDb().prepare("DELETE FROM otp_codes WHERE expires_at < datetime('now')").run()
 }, 60 * 60 * 1000)
 
 // GET /api/auth/setup-status
@@ -99,16 +97,10 @@ router.post('/login', async (req, res) => {
     return res.status(429).json({ error: `请等待 ${Math.ceil(coolRemaining / 1000)} 秒后再发送验证码` })
   }
 
-  // 生成并存储 OTP（5分钟有效）
-  const code = generateOtp()
-  db.prepare(`
-    INSERT INTO otp_codes (phone, code, expires_at)
-    VALUES (?, ?, datetime('now', '+5 minutes'))
-  `).run(phone, code)
-  otpSendTimes.set(phone, Date.now())
-
+  // 发送验证码（由阿里云生成和管理）
   try {
-    await sendOtp(phone, code)
+    await sendSmsCode(phone)
+    otpSendTimes.set(phone, Date.now())
   } catch (e) {
     console.error('SMS error:', e.message)
     return res.status(500).json({ error: config.nodeEnv === 'production' ? '短信发送失败，请稍后重试' : e.message })
@@ -117,8 +109,8 @@ router.post('/login', async (req, res) => {
   res.json({ ok: true })
 })
 
-// POST /api/auth/verify-otp — 第二步：验证短信码，签发 JWT
-router.post('/verify-otp', (req, res) => {
+// POST /api/auth/verify-otp — 第二步：核验短信码，签发 JWT
+router.post('/verify-otp', async (req, res) => {
   const { phone, code } = req.body
   if (!phone || !code) {
     return res.status(400).json({ error: '手机号和验证码不能为空' })
@@ -134,14 +126,16 @@ router.post('/verify-otp', (req, res) => {
     return res.status(429).json({ error: `验证码错误次数过多，请在 ${remainingMinutes} 分钟后重试` })
   }
 
-  const db = getDb()
-  const otp = db.prepare(`
-    SELECT * FROM otp_codes
-    WHERE phone = ? AND used = 0 AND expires_at > datetime('now')
-    ORDER BY id DESC LIMIT 1
-  `).get(phone)
+  // 调用阿里云核验
+  let ok = false
+  try {
+    ok = await verifySmsCode(phone, code)
+  } catch (e) {
+    console.error('OTP verify error:', e.message)
+    return res.status(500).json({ error: config.nodeEnv === 'production' ? '验证失败，请稍后重试' : e.message })
+  }
 
-  if (!otp || otp.code !== code) {
+  if (!ok) {
     const current = otpFailures.get(phone) || { count: 0, blockedUntil: 0 }
     current.count++
     if (current.count >= OTP_MAX_FAILURES) {
@@ -152,8 +146,8 @@ router.post('/verify-otp', (req, res) => {
   }
 
   otpFailures.delete(phone)
-  db.prepare('UPDATE otp_codes SET used = 1 WHERE id = ?').run(otp.id)
 
+  const db = getDb()
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(phone)
   if (!user) return res.status(404).json({ error: '用户不存在' })
 
