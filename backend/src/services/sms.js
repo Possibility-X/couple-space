@@ -16,7 +16,7 @@ async function sendOtp(phone, code) {
     PhoneNumbers: phone,
     SignName: config.aliyunSmsSignName,
     TemplateCode: config.aliyunSmsTemplateCode,
-    TemplateParam: JSON.stringify({ code })
+    TemplateParam: JSON.stringify({ code, min: '5' })
   }, { method: 'POST' })
   if (result.Code !== 'OK') {
     throw new Error(`短信发送失败: ${result.Message}`)
