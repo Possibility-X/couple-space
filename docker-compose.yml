@@ -10,6 +10,10 @@ services:
       ANNIVERSARY_DATE: ${ANNIVERSARY_DATE}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-100}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
+      ALIYUN_ACCESS_KEY_ID: ${ALIYUN_ACCESS_KEY_ID:-}
+      ALIYUN_ACCESS_KEY_SECRET: ${ALIYUN_ACCESS_KEY_SECRET:-}
+      ALIYUN_SMS_SIGN_NAME: ${ALIYUN_SMS_SIGN_NAME:-}
+      ALIYUN_SMS_TEMPLATE_CODE: ${ALIYUN_SMS_TEMPLATE_CODE:-}
     volumes:
       - ./data/uploads:/app/data/uploads
       - ./data/db:/app/data/db
