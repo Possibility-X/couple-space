@@ -29,7 +29,7 @@ router.post('/', auth, (req, res) => {
   const result = db.prepare(`
     INSERT INTO timeline_events (title, description, event_date, media_id, is_milestone, emoji)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(title, description ?? null, event_date, media_id ?? null, is_milestone ? 1 : 0, emoji || '❤️')
+  `).run(title, description ?? null, event_date, media_id ? Number(media_id) : null, is_milestone ? 1 : 0, emoji || '❤️')
   res.json({ id: result.lastInsertRowid })
 })
 
@@ -53,7 +53,7 @@ router.put('/:id', auth, (req, res) => {
       is_milestone = COALESCE(?, is_milestone),
       emoji = COALESCE(?, emoji)
     WHERE id = ?
-  `).run(title ?? null, description ?? null, event_date ?? null, media_id ?? null, is_milestone != null ? (is_milestone ? 1 : 0) : null, emoji ?? null, req.params.id)
+  `).run(title ?? null, description ?? null, event_date ?? null, media_id ? Number(media_id) : null, is_milestone != null ? (is_milestone ? 1 : 0) : null, emoji ?? null, req.params.id)
   res.json({ ok: true })
 })
 
