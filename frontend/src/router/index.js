@@ -24,24 +24,32 @@ const router = createRouter({
   routes
 })
 
+// null = unchecked, true/false = cached result
+// Invalidated when leaving /setup so the completed setup is picked up immediately.
+let setupDone = null
+
 router.beforeEach(async (to, from) => {
   const auth = useAuthStore()
 
-  // 检查 /setup 是否已完成
-  if (to.path === '/setup') {
+  // Re-fetch after leaving /setup (setup may have just been completed)
+  if (from.path === '/setup') setupDone = null
+
+  if (setupDone === null) {
     try {
-      const res = await api.get('/api/auth/setup-status')
-      if (res.data.setupDone) {
-        return '/login'
-      }
-    } catch (e) {
-      console.error('Failed to check setup status:', e)
-      return '/login'
+      const res = await api.get('/api/auth/setup-status', { _skipToast: true })
+      setupDone = !!res.data.setupDone
+    } catch {
+      setupDone = false
     }
   }
 
+  // Setup not done → force /setup for every route
+  if (!setupDone && to.path !== '/setup') return '/setup'
+  // Setup done → block /setup
+  if (setupDone && to.path === '/setup') return '/login'
+
   if (to.meta.requiresAuth && !auth.isLoggedIn) return '/login'
-  if (to.meta.guest && auth.isLoggedIn && to.path !== '/setup') return '/'
+  if (to.meta.guest && auth.isLoggedIn) return '/'
 })
 
 export default router
