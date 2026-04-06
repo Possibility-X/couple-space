@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import axios from 'axios'
+import api from '@/lib/axios'
 
 const routes = [
   { path: '/login', component: () => import('@/views/Login.vue'), meta: { guest: true } },
@@ -14,6 +14,7 @@ const routes = [
       { path: 'gallery', component: () => import('@/views/Gallery.vue') },
       { path: 'timeline', component: () => import('@/views/Timeline.vue') },
       { path: 'upload', component: () => import('@/views/Upload.vue') },
+      { path: 'settings', component: () => import('@/views/Settings.vue') },
     ]
   }
 ]
@@ -29,7 +30,7 @@ router.beforeEach(async (to, from) => {
   // 检查 /setup 是否已完成
   if (to.path === '/setup') {
     try {
-      const res = await axios.get('/api/auth/setup-status')
+      const res = await api.get('/api/auth/setup-status')
       if (res.data.setupDone) {
         return '/login'
       }

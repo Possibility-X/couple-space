@@ -36,7 +36,7 @@
         </div>
         <div>
           <label class="block text-sm text-stone-600 mb-1">备注说明（可选）</label>
-          <input v-model="caption" placeholder="为这批照片写点什么…" class="input-field" />
+          <input v-model="caption" placeholder="为这批照片写点什么…" class="input-field" maxlength="500" />
         </div>
       </div>
 
@@ -72,7 +72,7 @@
     <div class="card p-4">
       <h3 class="font-medium text-stone-700 mb-3 text-sm">新建相册</h3>
       <div class="flex gap-2">
-        <input v-model="newAlbumName" placeholder="相册名称" class="input-field flex-1" />
+        <input v-model="newAlbumName" placeholder="相册名称" class="input-field flex-1" maxlength="50" />
         <button @click="createAlbum" class="btn-rose px-4">创建</button>
       </div>
     </div>
@@ -81,7 +81,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/lib/axios'
+import { useToastStore } from '@/stores/toast'
+
+const toast = useToastStore()
 
 const files = ref([])
 const albums = ref([])
@@ -110,6 +113,7 @@ function onDrop(e) { dragging.value = false; processFiles(e.dataTransfer.files) 
 async function uploadAll() {
   uploading.value = true
   doneCount.value = 0
+  let errorCount = 0
   for (const f of files.value) {
     if (f.status === 'done') { doneCount.value++; continue }
     f.status = 'uploading'
@@ -118,29 +122,45 @@ async function uploadAll() {
     if (selectedAlbum.value) fd.append('album_id', selectedAlbum.value)
     if (caption.value) fd.append('caption', caption.value)
     try {
-      await axios.post('/api/media/upload', fd, {
+      await api.post('/api/media/upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: e => { f.progress = Math.round(e.loaded / e.total * 100) }
+        onUploadProgress: e => { f.progress = Math.round(e.loaded / e.total * 100) },
+        _skipToast: true
       })
       f.status = 'done'
       doneCount.value++
     } catch {
       f.status = 'error'
+      errorCount++
     }
   }
   uploading.value = false
+  if (errorCount === 0) {
+    toast.success(`上传完成 (${doneCount.value} 个文件)`)
+  } else {
+    toast.error(`${errorCount} 个文件上传失败`)
+  }
 }
 
 async function createAlbum() {
   if (!newAlbumName.value.trim()) return
-  await axios.post('/api/albums', { name: newAlbumName.value })
-  newAlbumName.value = ''
-  const res = await axios.get('/api/albums')
-  albums.value = res.data
+  try {
+    await api.post('/api/albums', { name: newAlbumName.value })
+    newAlbumName.value = ''
+    const res = await api.get('/api/albums')
+    albums.value = res.data
+    toast.success('相册已创建')
+  } catch (e) {
+    // Interceptor handles error display
+  }
 }
 
 onMounted(async () => {
-  const res = await axios.get('/api/albums')
-  albums.value = res.data
+  try {
+    const res = await api.get('/api/albums')
+    albums.value = res.data
+  } catch (e) {
+    // Interceptor handles error display
+  }
 })
 </script>

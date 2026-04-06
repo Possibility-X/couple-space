@@ -3,7 +3,16 @@
     <!-- Header -->
     <header class="bg-white/80 backdrop-blur-sm sticky top-0 z-30 border-b border-rose-100 px-4 py-3 flex items-center justify-between">
       <span class="font-serif text-rose-500 font-bold text-lg">💕 我们的小窝</span>
-      <button @click="logout" class="text-stone-400 text-sm hover:text-rose-400 transition">退出</button>
+      <div class="flex items-center gap-3">
+        <router-link to="/settings">
+          <img v-if="auth.user?.avatar" :src="`/uploads/avatars/${auth.user.avatar}`"
+            class="w-8 h-8 rounded-full object-cover border-2 border-rose-200" />
+          <div v-else class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-sm border-2 border-rose-200 text-rose-400">
+            {{ auth.user?.displayName?.[0] || '?' }}
+          </div>
+        </router-link>
+        <button @click="logout" class="text-stone-400 text-sm hover:text-rose-400 transition">退出</button>
+      </div>
     </header>
 
     <!-- Page content -->

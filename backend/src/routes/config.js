@@ -1,6 +1,7 @@
 const express = require('express')
 const { getDb } = require('../database/init')
 const auth = require('../middleware/auth')
+const { validateFields, LIMITS } = require('../utils/validate')
 
 const router = express.Router()
 
@@ -12,6 +13,12 @@ router.get('/', auth, (req, res) => {
 
 router.put('/', auth, (req, res) => {
   const { person1_name, person2_name, anniversary_date, love_story } = req.body
+  const err = validateFields([
+    { value: person1_name, name: 'TA 的昵称', limit: LIMITS.person_name },
+    { value: person2_name, name: '你的昵称', limit: LIMITS.person_name },
+    { value: love_story, name: '故事', limit: LIMITS.love_story },
+  ])
+  if (err) return res.status(400).json({ error: err })
   const db = getDb()
   db.prepare(`
     UPDATE couple_config SET

@@ -13,7 +13,7 @@
           <div class="space-y-3 mb-4">
             <h3 class="font-serif text-rose-500 font-semibold">TA 的账号</h3>
             <input v-model="form.person1.username" type="tel" placeholder="手机号（11位）" class="input-field" maxlength="11" required />
-            <input v-model="form.person1.displayName" placeholder="昵称（如：小宝）" class="input-field" required />
+            <input v-model="form.person1.displayName" placeholder="昵称（如：小宝）" class="input-field" maxlength="30" required />
             <input v-model="form.person1.password" type="password" placeholder="密码" class="input-field" required />
           </div>
 
@@ -21,7 +21,7 @@
           <div class="space-y-3 mb-4">
             <h3 class="font-serif text-rose-500 font-semibold">你的账号</h3>
             <input v-model="form.person2.username" type="tel" placeholder="手机号（11位）" class="input-field" maxlength="11" required />
-            <input v-model="form.person2.displayName" placeholder="昵称（如：宝宝）" class="input-field" required />
+            <input v-model="form.person2.displayName" placeholder="昵称（如：宝宝）" class="input-field" maxlength="30" required />
             <input v-model="form.person2.password" type="password" placeholder="密码" class="input-field" required />
           </div>
 
@@ -44,7 +44,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import axios from '@/lib/axios'
 
 const router = useRouter()
 const error = ref('')
@@ -72,7 +72,7 @@ async function handleSetup() {
       person1: form.value.person1,
       person2: form.value.person2,
       anniversaryDate: form.value.anniversaryDate
-    })
+    }, { _skipToast: true })
     router.push('/login')
   } catch (e) {
     error.value = e.response?.data?.error || '设置失败'

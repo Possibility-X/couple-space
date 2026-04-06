@@ -3,7 +3,14 @@
     <!-- Add event button -->
     <div class="flex justify-between items-center mb-6">
       <h2 class="font-serif text-stone-700 font-semibold text-xl">我们的故事</h2>
-      <button @click="showForm = true" class="btn-rose py-2 px-4 text-sm">+ 添加</button>
+      <div class="flex items-center gap-2">
+        <button @click="managing = !managing"
+          class="btn-ghost py-2 px-4 text-sm"
+          :class="managing ? 'border-rose-400 text-rose-500 bg-rose-50' : ''">
+          {{ managing ? '完成' : '管理' }}
+        </button>
+        <button @click="showForm = true" class="btn-rose py-2 px-4 text-sm">+ 添加</button>
+      </div>
     </div>
 
     <!-- Timeline -->
@@ -29,9 +36,9 @@
             <p v-if="event.description" class="text-stone-500 text-xs mt-1 leading-relaxed">{{ event.description }}</p>
             <img v-if="event.media_thumb" :src="`/uploads/thumbs/${event.media_thumb}`"
               class="mt-2 rounded-lg w-full object-cover max-h-32" loading="lazy" />
-            <div class="flex gap-2 mt-2">
-              <button @click="editEvent(event)" class="text-xs text-rose-400 hover:text-rose-500">编辑</button>
-              <button @click="deleteEvent(event.id)" class="text-xs text-stone-400 hover:text-red-400">删除</button>
+            <div v-if="managing" class="flex gap-3 mt-2 pt-2 border-t border-rose-50">
+              <button @click="editEvent(event)" class="text-xs text-rose-400 hover:text-rose-500">✏️ 编辑</button>
+              <button @click="deleteEvent(event.id)" class="text-xs text-stone-400 hover:text-red-400">🗑️ 删除</button>
             </div>
           </div>
         </div>
@@ -55,11 +62,11 @@
             {{ editingEvent ? '编辑事件' : '添加新事件' }}
           </h3>
           <form @submit.prevent="saveEvent" class="space-y-3">
-            <input v-model="form.title" placeholder="事件标题 *" class="input-field" required />
+            <input v-model="form.title" placeholder="事件标题 *" class="input-field" maxlength="100" required />
             <input v-model="form.event_date" type="date" class="input-field" required />
-            <input v-model="form.emoji" placeholder="表情 (如 ❤️)" class="input-field" />
+            <input v-model="form.emoji" placeholder="表情 (如 ❤️)" class="input-field" maxlength="10" />
             <textarea v-model="form.description" placeholder="描述（可选）"
-              class="input-field resize-none" rows="3" />
+              class="input-field resize-none" rows="3" maxlength="2000" />
             <label class="flex items-center gap-2 cursor-pointer">
               <input v-model="form.is_milestone" type="checkbox" class="accent-rose-500" />
               <span class="text-sm text-stone-600">🌟 标记为里程碑</span>
@@ -77,10 +84,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/lib/axios'
+import { useToastStore } from '@/stores/toast'
+
+const toast = useToastStore()
 
 const events = ref([])
 const showForm = ref(false)
+const managing = ref(false)
 const editingEvent = ref(null)
 const form = ref({ title: '', event_date: '', emoji: '❤️', description: '', is_milestone: false })
 
@@ -98,37 +109,38 @@ function editEvent(event) {
 async function saveEvent() {
   try {
     if (editingEvent.value) {
-      await axios.put(`/api/timeline/${editingEvent.value.id}`, form.value)
+      await api.put(`/api/timeline/${editingEvent.value.id}`, form.value)
     } else {
-      await axios.post('/api/timeline', form.value)
+      await api.post('/api/timeline', form.value)
     }
     showForm.value = false
     editingEvent.value = null
     form.value = { title: '', event_date: '', emoji: '❤️', description: '', is_milestone: false }
+    toast.success('事件已保存')
     await fetchEvents()
   } catch (e) {
-    console.error('Failed to save event:', e)
-    alert('保存失败，请重试')
+    // Interceptor handles error display
   }
 }
 
 async function deleteEvent(id) {
   if (!confirm('确定删除这条记忆吗？')) return
   try {
-    await axios.delete(`/api/timeline/${id}`)
+    await api.delete(`/api/timeline/${id}`)
+    managing.value = false
+    toast.success('事件已删除')
     await fetchEvents()
   } catch (e) {
-    console.error('Failed to delete event:', e)
-    alert('删除失败，请重试')
+    // Interceptor handles error display
   }
 }
 
 async function fetchEvents() {
   try {
-    const res = await axios.get('/api/timeline')
+    const res = await api.get('/api/timeline')
     events.value = res.data
   } catch (e) {
-    console.error('Failed to fetch events:', e)
+    // Interceptor handles error display
   }
 }
 

@@ -1,6 +1,7 @@
 const express = require('express')
 const { getDb } = require('../database/init')
 const auth = require('../middleware/auth')
+const { validateFields, LIMITS } = require('../utils/validate')
 
 const router = express.Router()
 
@@ -21,6 +22,11 @@ router.get('/', auth, (req, res) => {
 router.post('/', auth, (req, res) => {
   const { name, description } = req.body
   if (!name) return res.status(400).json({ error: '相册名不能为空' })
+  const err = validateFields([
+    { value: name, name: '相册名', limit: LIMITS.album_name },
+    { value: description, name: '描述', limit: LIMITS.album_description },
+  ])
+  if (err) return res.status(400).json({ error: err })
   const db = getDb()
   const result = db.prepare('INSERT INTO albums (name, description) VALUES (?, ?)').run(name, description || null)
   res.json({ id: result.lastInsertRowid, name, description })
@@ -28,6 +34,11 @@ router.post('/', auth, (req, res) => {
 
 router.put('/:id', auth, (req, res) => {
   const { name, description, cover_media_id } = req.body
+  const err = validateFields([
+    { value: name, name: '相册名', limit: LIMITS.album_name },
+    { value: description, name: '描述', limit: LIMITS.album_description },
+  ])
+  if (err) return res.status(400).json({ error: err })
   const db = getDb()
   const album = db.prepare('SELECT id FROM albums WHERE id = ?').get(req.params.id)
   if (!album) return res.status(404).json({ error: '相册不存在' })

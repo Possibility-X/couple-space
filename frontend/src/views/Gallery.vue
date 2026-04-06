@@ -46,12 +46,14 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/lib/axios'
 import PhotoCard from '@/components/PhotoCard.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
 
 const auth = useAuthStore()
+const toast = useToastStore()
 
 const albums = ref([])
 const media = ref([])
@@ -73,11 +75,11 @@ async function fetchMedia(reset = false) {
   const params = { page: page.value, limit: 20 }
   if (selectedAlbum.value) params.album = selectedAlbum.value
   try {
-    const res = await axios.get('/api/media', { params })
+    const res = await api.get('/api/media', { params })
     media.value.push(...res.data.items)
     hasMore.value = media.value.length < res.data.total
   } catch (e) {
-    console.error('Failed to fetch media:', e)
+    // Interceptor handles error display
   } finally {
     loading.value = false
   }
@@ -91,11 +93,12 @@ async function loadMore() {
 async function handleDelete() {
   const item = lightboxItem.value
   try {
-    await axios.delete(`/api/media/${item.id}`)
+    await api.delete(`/api/media/${item.id}`)
     media.value.splice(media.value.indexOf(item), 1)
     lightboxItem.value = null
+    toast.success('照片已删除')
   } catch (e) {
-    console.error('Delete failed:', e)
+    // Interceptor handles error display
   }
 }
 
@@ -103,10 +106,10 @@ watch(selectedAlbum, () => fetchMedia(true))
 
 onMounted(async () => {
   try {
-    const res = await axios.get('/api/albums')
+    const res = await api.get('/api/albums')
     albums.value = res.data
   } catch (e) {
-    console.error('Failed to fetch albums:', e)
+    // Interceptor handles error display
   }
   await fetchMedia(true)
 })

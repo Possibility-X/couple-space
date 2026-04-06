@@ -70,7 +70,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import axios from '@/lib/axios'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -119,7 +119,7 @@ async function handleLogin() {
   loading.value = true
   error.value = ''
   try {
-    await axios.post('/api/auth/login', { phone, password: form.value.password })
+    await axios.post('/api/auth/login', { phone, password: form.value.password }, { _skipToast: true })
     step.value = 2
     startCountdown()
   } catch (e) {
@@ -147,7 +147,7 @@ async function resend() {
   error.value = ''
   form.value.code = ''
   try {
-    await axios.post('/api/auth/login', { phone: form.value.phone.trim(), password: form.value.password })
+    await axios.post('/api/auth/login', { phone: form.value.phone.trim(), password: form.value.password }, { _skipToast: true })
     startCountdown()
   } catch (e) {
     error.value = e.response?.data?.error || '发送失败'

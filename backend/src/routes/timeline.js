@@ -1,6 +1,7 @@
 const express = require('express')
 const { getDb } = require('../database/init')
 const auth = require('../middleware/auth')
+const { validateFields, LIMITS } = require('../utils/validate')
 
 const router = express.Router()
 
@@ -18,6 +19,12 @@ router.get('/', auth, (req, res) => {
 router.post('/', auth, (req, res) => {
   const { title, description, event_date, media_id, is_milestone, emoji } = req.body
   if (!title || !event_date) return res.status(400).json({ error: '标题和日期不能为空' })
+  const err = validateFields([
+    { value: title, name: '标题', limit: LIMITS.timeline_title },
+    { value: description, name: '描述', limit: LIMITS.timeline_description },
+    { value: emoji, name: '表情', limit: LIMITS.emoji },
+  ])
+  if (err) return res.status(400).json({ error: err })
   const db = getDb()
   const result = db.prepare(`
     INSERT INTO timeline_events (title, description, event_date, media_id, is_milestone, emoji)
@@ -28,6 +35,12 @@ router.post('/', auth, (req, res) => {
 
 router.put('/:id', auth, (req, res) => {
   const { title, description, event_date, media_id, is_milestone, emoji } = req.body
+  const err = validateFields([
+    { value: title, name: '标题', limit: LIMITS.timeline_title },
+    { value: description, name: '描述', limit: LIMITS.timeline_description },
+    { value: emoji, name: '表情', limit: LIMITS.emoji },
+  ])
+  if (err) return res.status(400).json({ error: err })
   const db = getDb()
   const event = db.prepare('SELECT id FROM timeline_events WHERE id = ?').get(req.params.id)
   if (!event) return res.status(404).json({ error: '事件不存在' })

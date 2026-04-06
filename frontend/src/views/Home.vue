@@ -54,7 +54,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/lib/axios'
 import HeartParticles from '@/components/HeartParticles.vue'
 import LoveCounter from '@/components/LoveCounter.vue'
 import PhotoCard from '@/components/PhotoCard.vue'
@@ -80,10 +80,10 @@ onMounted(async () => {
       await configStore.fetchConfig()
       config.value = configStore.config
     }
-    const res = await axios.get('/api/media/recent')
+    const res = await api.get('/api/media/recent')
     recentMedia.value = res.data
   } catch (e) {
-    console.error('Failed to load home data:', e)
+    // Interceptor handles error display
   } finally {
     loading.value = false
   }

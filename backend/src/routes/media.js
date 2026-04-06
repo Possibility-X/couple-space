@@ -6,6 +6,8 @@ const { getDb } = require('../database/init')
 const config = require('../config')
 const auth = require('../middleware/auth')
 const { createUploadMiddleware } = require('../middleware/upload')
+const { validateFields, LIMITS } = require('../utils/validate')
+const { extractThumbnail } = require('../utils/video-thumbnail')
 
 const router = express.Router()
 const upload = createUploadMiddleware()
@@ -45,6 +47,10 @@ router.post('/upload', auth, upload.array('files', 20), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: '没有上传文件' })
   }
+  const captionErr = validateFields([
+    { value: req.body.caption, name: '备注', limit: LIMITS.media_caption },
+  ])
+  if (captionErr) return res.status(400).json({ error: captionErr })
   const db = getDb()
   const thumbDir = path.join(config.uploadsDir, 'thumbs')
   fs.mkdirSync(thumbDir, { recursive: true })
@@ -71,6 +77,11 @@ router.post('/upload', auth, upload.array('files', 20), async (req, res) => {
         console.error('Thumbnail error:', e.message)
         thumbFilename = null
       }
+    }
+
+    if (file.mimetype.startsWith('video/')) {
+      const baseName = path.parse(file.filename).name
+      thumbFilename = await extractThumbnail(file.path, thumbDir, baseName)
     }
 
     const result = db.prepare(`

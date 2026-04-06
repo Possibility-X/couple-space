@@ -4,6 +4,11 @@ const jwt = require('jsonwebtoken')
 const { getDb } = require('../database/init')
 const config = require('../config')
 const { sendOtp } = require('../services/sms')
+const { validateFields, LIMITS } = require('../utils/validate')
+const multer = require('multer')
+const path = require('path')
+const fs = require('fs')
+const Jimp = require('jimp')
 
 const router = express.Router()
 
@@ -20,6 +25,11 @@ const LOCK_TIME = 15 * 60 * 1000 // 15分钟
 const otpSendTimes = new Map()
 const OTP_COOL_DOWN = 60 * 1000 // 60秒
 
+// OTP 验证失败记录 { phone: { count, blockedUntil } }
+const otpFailures = new Map()
+const OTP_MAX_FAILURES = 5
+const OTP_BLOCK_TIME = 15 * 60 * 1000 // 15分钟
+
 // 每小时清理过期记录
 setInterval(() => {
   const now = Date.now()
@@ -31,6 +41,11 @@ setInterval(() => {
   for (const [phone, sentAt] of otpSendTimes.entries()) {
     if (now - sentAt > OTP_COOL_DOWN * 10) {
       otpSendTimes.delete(phone)
+    }
+  }
+  for (const [phone, fail] of otpFailures.entries()) {
+    if (fail.blockedUntil > 0 && fail.blockedUntil < now) {
+      otpFailures.delete(phone)
     }
   }
   getDb().prepare("DELETE FROM otp_codes WHERE expires_at < datetime('now')").run()
@@ -112,6 +127,13 @@ router.post('/verify-otp', (req, res) => {
     return res.status(400).json({ error: '请输入正确的手机号码' })
   }
 
+  // 检查 OTP 验证次数限制
+  const fail = otpFailures.get(phone)
+  if (fail && fail.blockedUntil > Date.now()) {
+    const remainingMinutes = Math.ceil((fail.blockedUntil - Date.now()) / 60000)
+    return res.status(429).json({ error: `验证码错误次数过多，请在 ${remainingMinutes} 分钟后重试` })
+  }
+
   const db = getDb()
   const otp = db.prepare(`
     SELECT * FROM otp_codes
@@ -120,9 +142,16 @@ router.post('/verify-otp', (req, res) => {
   `).get(phone)
 
   if (!otp || otp.code !== code) {
+    const current = otpFailures.get(phone) || { count: 0, blockedUntil: 0 }
+    current.count++
+    if (current.count >= OTP_MAX_FAILURES) {
+      current.blockedUntil = Date.now() + OTP_BLOCK_TIME
+    }
+    otpFailures.set(phone, current)
     return res.status(401).json({ error: '验证码错误或已过期' })
   }
 
+  otpFailures.delete(phone)
   db.prepare('UPDATE otp_codes SET used = 1 WHERE id = ?').run(otp.id)
 
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(phone)
@@ -162,6 +191,12 @@ router.post('/setup', (req, res) => {
     return res.status(400).json({ error: '你的手机号格式不正确' })
   }
 
+  const valErr = validateFields([
+    { value: person1.displayName, name: 'TA 的昵称', limit: LIMITS.display_name },
+    { value: person2.displayName, name: '你的昵称', limit: LIMITS.display_name },
+  ])
+  if (valErr) return res.status(400).json({ error: valErr })
+
   const insertUser = db.prepare(
     'INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)'
   )
@@ -186,6 +221,52 @@ router.post('/setup', (req, res) => {
     const message = config.nodeEnv === 'production' ? '初始化失败，请检查账号信息后重试' : '初始化失败：' + e.message
     res.status(400).json({ error: message })
   }
+})
+
+// Avatar upload config
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(config.uploadsDir, 'avatars')
+    fs.mkdirSync(dir, { recursive: true })
+    cb(null, dir)
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    cb(null, `avatar_${req.user.id}_${Date.now()}${ext}`)
+  }
+})
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    cb(null, allowed.includes(file.mimetype))
+  }
+})
+
+// POST /api/auth/avatar — 上传头像
+router.post('/avatar', require('../middleware/auth'), avatarUpload.single('avatar'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: '请选择一张图片' })
+
+  try {
+    // Resize to 200x200 square
+    const image = await Jimp.read(req.file.path)
+    image.cover(200, 200)
+    await image.quality(85).writeAsync(req.file.path)
+  } catch (e) {
+    console.error('Avatar resize error:', e.message)
+  }
+
+  const db = getDb()
+  // Delete old avatar file
+  const oldUser = db.prepare('SELECT avatar FROM users WHERE id = ?').get(req.user.id)
+  if (oldUser?.avatar) {
+    const oldPath = path.join(config.uploadsDir, 'avatars', oldUser.avatar)
+    fs.promises.unlink(oldPath).catch(() => {})
+  }
+
+  db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(req.file.filename, req.user.id)
+  res.json({ avatar: req.file.filename })
 })
 
 module.exports = router

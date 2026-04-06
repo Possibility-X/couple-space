@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import api from '@/lib/axios'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
@@ -13,7 +13,6 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = data.token
     localStorage.setItem('user', JSON.stringify(data.user))
     localStorage.setItem('token', data.token)
-    axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
   }
 
   function logout() {
@@ -21,17 +20,11 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     localStorage.removeItem('user')
     localStorage.removeItem('token')
-    delete axios.defaults.headers.common['Authorization']
-  }
-
-  // Restore token on app load
-  if (token.value) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
   }
 
   async function fetchMe() {
     try {
-      const res = await axios.get('/api/auth/me')
+      const res = await api.get('/api/auth/me')
       user.value = res.data
     } catch {
       logout()
@@ -39,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function verifyOtp(phone, code) {
-    const res = await axios.post('/api/auth/verify-otp', { phone, code })
+    const res = await api.post('/api/auth/verify-otp', { phone, code }, { _skipToast: true })
     setAuth(res.data)
   }
 
