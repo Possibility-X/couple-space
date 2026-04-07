@@ -39,8 +39,26 @@
 
       <!-- Media -->
       <div class="max-w-full max-h-screen p-4 flex flex-col items-center gap-3">
-        <video v-if="isVideo" :src="src" controls class="max-w-full max-h-[80vh] rounded-lg" autoplay />
-        <img v-else :src="src" :alt="item?.original_name" class="max-w-full max-h-[80vh] object-contain rounded-lg" />
+        <!-- Video: no autoplay (blocked on mobile without muted); playsinline for iOS -->
+        <video v-if="isVideo" :key="src" :src="src" controls playsinline preload="metadata"
+          class="max-w-full max-h-[80vh] rounded-lg" />
+
+        <!-- Image: show blurred thumbnail while full-res loads -->
+        <template v-else>
+          <template v-if="!imageLoaded">
+            <!-- Blurred thumbnail placeholder -->
+            <img v-if="thumbSrc" :src="thumbSrc"
+              class="max-w-full max-h-[80vh] object-contain rounded-lg blur-sm opacity-70" />
+            <!-- Spinner when no thumbnail available -->
+            <div v-else class="flex items-center justify-center h-64 w-64">
+              <div class="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            </div>
+            <!-- Hidden preloader for full-res; fires @load when ready -->
+            <img :key="src" :src="src" @load="imageLoaded = true" class="hidden" aria-hidden="true" />
+          </template>
+          <img v-else :src="src" :alt="item?.original_name"
+            class="max-w-full max-h-[80vh] object-contain rounded-lg" />
+        </template>
 
         <div v-if="item?.caption" class="text-white/70 text-sm text-center">{{ item.caption }}</div>
         <div class="text-white/40 text-xs">{{ item?.uploader_name }} · {{ formatDate(item?.taken_at || item?.created_at) }}</div>
@@ -76,14 +94,21 @@ const props = defineProps({
 const emit = defineEmits(['close', 'prev', 'next', 'delete'])
 
 const confirmDelete = ref(false)
+const imageLoaded = ref(false)
 
-// Reset confirmation state when switching items
-watch(() => props.item?.id, () => { confirmDelete.value = false })
+// Reset state when switching items
+watch(() => props.item?.id, () => {
+  confirmDelete.value = false
+  imageLoaded.value = false
+})
 
 const hasPrev = computed(() => props.currentIndex > 0)
 const hasNext = computed(() => props.currentIndex < props.total - 1)
 const isVideo = computed(() => props.item?.mime_type?.startsWith('video/'))
 const src = computed(() => `/uploads/originals/${props.item?.filename}`)
+const thumbSrc = computed(() =>
+  props.item?.thumb_filename ? `/uploads/thumbs/${props.item.thumb_filename}` : null
+)
 
 let touchStartX = 0
 function onTouchStart(e) { touchStartX = e.touches[0].clientX }

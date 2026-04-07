@@ -7,7 +7,7 @@ const config = require('../config')
 const auth = require('../middleware/auth')
 const { createUploadMiddleware } = require('../middleware/upload')
 const { validateFields, LIMITS } = require('../utils/validate')
-const { extractThumbnail } = require('../utils/video-thumbnail')
+const { extractThumbnail, addFastStart } = require('../utils/video-thumbnail')
 
 const router = express.Router()
 const upload = createUploadMiddleware()
@@ -80,6 +80,7 @@ router.post('/upload', auth, upload.array('files', 20), async (req, res) => {
     }
 
     if (file.mimetype.startsWith('video/')) {
+      await addFastStart(file.path, file.mimetype)
       const baseName = path.parse(file.filename).name
       thumbFilename = await extractThumbnail(file.path, thumbDir, baseName)
     }

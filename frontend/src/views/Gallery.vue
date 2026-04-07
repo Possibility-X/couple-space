@@ -69,6 +69,16 @@ function openLightbox(item) {
   lightboxItem.value = item
 }
 
+// Preload adjacent images so they're cache-ready before the user swipes
+watch(lightboxIndex, (idx) => {
+  ;[idx - 1, idx + 1].forEach(i => {
+    const m = media.value[i]
+    if (m?.mime_type?.startsWith('image/')) {
+      new Image().src = `/uploads/originals/${m.filename}`
+    }
+  })
+})
+
 async function fetchMedia(reset = false) {
   loading.value = true
   if (reset) { page.value = 1; media.value = [] }
